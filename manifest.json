@@ -1,0 +1,10 @@
+{
+	"id": "hevy-for-obsidian",
+	"name": "Hevy for Obsidian",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Visualizes Hevy workout data in Obsidian.",
+	"author": "0xv1n",
+	"authorUrl": "https://github.com/0xv1n",
+	"isDesktopOnly": false
+}

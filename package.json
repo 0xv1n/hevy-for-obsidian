@@ -1,0 +1,21 @@
+{
+  "name": "hevy-for-obsidian",
+  "version": "1.0.0",
+  "description": "Integrate Hevy workouts into Obsidian",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "obsidian": "^1.5.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.17.3",
+    "builtin-modules": "3.3.0",
+    "@types/node": "^16.0.0",
+    "tslib": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
+}
