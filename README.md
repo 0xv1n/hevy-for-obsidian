@@ -17,8 +17,8 @@ Connect your Hevy workout data directly to your Obsidian second brain. This plug
 
 ## 🚀 Getting Started
 1. **Installation**
-    - If building: `npm run build`, then copy hevy-tracker to your Obsidian plugins folder.
-    - If ***not*** building: copy hevy-tracker to your Obsidian plugins folder. *(the repo will always have the most current build, but I urge you to build it yourself!)*
+    - If building: `npm run build`, then copy hevy-for-obsidian to your Obsidian plugins folder.
+    - If ***not*** building: copy hevy-for-obsidian to your Obsidian plugins folder. *(the repo will always have the most current build, but I urge you to build it yourself!)*
     - Enable the plugin in Settings > Community Plugins.
 
 2. **Configuration**
