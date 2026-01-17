@@ -18,7 +18,7 @@ Connect your Hevy workout data directly to your Obsidian second brain. This plug
 ## 🚀 Getting Started
 1. **Installation**
     - If building: `npm run build`, then copy hevy to your Obsidian plugins folder.
-    - If ***not*** building: copy hevy to your Obsidian plugins folder. *(the repo will always have the most current build, but I urge you to build it yourself!)*
+    - If ***not*** building: copy hevy to your Obsidian plugins folder. *(the repo will always have the most current build in releases, but I urge you to build it yourself!)*
     - Enable the plugin in Settings > Community Plugins.
 
 2. **Configuration**
@@ -26,11 +26,25 @@ Connect your Hevy workout data directly to your Obsidian second brain. This plug
     - Enter your Hevy API Key.
     - Set your preferred Weight Unit (kg/lbs) and the folder where you want your workouts saved.
 
-3. **Usage**
-    - Sync: Run the command Sync recent workouts to pull your latest data.
-    - Weekly Review: Generate historical weekly reviews for all synced workouts. 
-    - Monthly Review: Run Generate Monthly Fitness Review to archive your monthly stats.
-    - Stats: Use Generate Exercise Stat Page to create a dedicated note with a progress chart for a specific lift.
+## **Usage**
+
+### **Sync**: 
+Run the command Sync recent workouts to pull your latest data.
+ ![](assets/sync.gif)
+
+Or Generate a table directly via `hevy-table`:
+
+![](assets/table.gif)
+
+###  **Weekly Review**
+Generate historical weekly and monthly reviews for all synced workouts. 
+
+![](assets/reports.gif)
+
+### **Stats**
+Use Generate Exercise Stat Page to create a dedicated note with a progress chart for a specific lift.
+
+![](assets/progresschart.gif)
 
 ## 🖥️ The Strength Dashboard
 
