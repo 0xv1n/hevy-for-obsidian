@@ -22,15 +22,8 @@ export class HevySettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        
-        // Use setHeading for consistent UI
         new Setting(containerEl)
-            .setName('Hevy for Obsidian settings')
-            .setHeading();
-
-        new Setting(containerEl)
-            .setName('Hevy API key')
-            .setDesc('Enter your personal API key from Hevy')
+            .setName('API key')
             .addText(t => t
                 .setValue(this.plugin.settings.apiKey)
                 .onChange(async (v) => { 

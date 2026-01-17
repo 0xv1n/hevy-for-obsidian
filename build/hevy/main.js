@@ -14665,7 +14665,7 @@ var HevyPlugin = class extends import_obsidian4.Plugin {
         row.createEl("td", { text: new Date(w.start_time).toLocaleDateString() });
       });
     });
-    this.registerMarkdownCodeBlockProcessor("hevy-chart", async (source, el) => {
+    this.registerMarkdownCodeBlockProcessor("hevy-chart", (source, el) => {
       const lines = source.split("\n");
       let exerciseName = "";
       lines.forEach((line) => {
@@ -14866,7 +14866,7 @@ ${files.map((f) => `- [[${f.basename}]]`).join("\n")}`;
     }
     new import_obsidian4.Notice("Weekly reports updated.");
   }
-  async promptForExerciseStats() {
+  promptForExerciseStats() {
     var _a;
     const baseFolder = (0, import_obsidian4.normalizePath)(this.settings.folderPath || "HevyWorkouts");
     const folder = this.app.vault.getAbstractFileByPath(baseFolder);

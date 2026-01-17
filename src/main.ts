@@ -7,6 +7,14 @@ import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
 
+// Define an interface for the frontmatter to avoid 'any' errors
+interface WorkoutFrontmatter {
+    date?: string;
+    exercises?: string[];
+    hevy_id?: string;
+    [key: string]: string | string[] | undefined; 
+}
+
 export default class HevyPlugin extends Plugin {
     settings: HevyPluginSettings;
 
@@ -14,7 +22,6 @@ export default class HevyPlugin extends Plugin {
         await this.loadSettings();
         this.addSettingTab(new HevySettingTab(this.app, this));
 
-        // Use short IDs (Obsidian prefixes them automatically) and sentence case names
         this.addCommand({
             id: 'sync-workouts',
             name: 'Sync workouts',
@@ -30,7 +37,7 @@ export default class HevyPlugin extends Plugin {
         this.addCommand({
             id: 'generate-exercise-stats',
             name: 'Generate exercise stats page',
-            callback: async () => { await this.promptForExerciseStats(); }
+            callback: () => { this.promptForExerciseStats(); }
         });
 
         this.addCommand({
@@ -60,7 +67,7 @@ export default class HevyPlugin extends Plugin {
             });
         });
 
-        this.registerMarkdownCodeBlockProcessor("hevy-chart", async (source, el) => {
+        this.registerMarkdownCodeBlockProcessor("hevy-chart", (source, el) => {
             const lines = source.split("\n");
             let exerciseName = "";
 
@@ -69,7 +76,7 @@ export default class HevyPlugin extends Plugin {
             });
 
             if (!exerciseName) {
-                el.createEl("p", { text: "Error: No exercise name specified." });
+                el.createEl("p", { text: "Error: no exercise name specified." });
                 return;
             }
 
@@ -81,18 +88,22 @@ export default class HevyPlugin extends Plugin {
 
             files.forEach(file => {
                 const cache = this.app.metadataCache.getFileCache(file);
-                const frontmatter = cache?.frontmatter;
+                // Explicitly cast frontmatter to our interface
+                const frontmatter = cache?.frontmatter as WorkoutFrontmatter | undefined;
 
                 if (frontmatter && frontmatter[frontmatterKey]) {
-                    const dateValue = frontmatter["date"] || file.basename.split(' - ')[0];
+                    const dateValue = frontmatter.date || file.basename.split(' - ')[0];
                     const parsedDate = new Date(dateValue);
 
                     if (!isNaN(parsedDate.getTime())) {
-                        points.push({
-                            x: parsedDate.toLocaleDateString(),
-                            y: parseFloat(frontmatter[frontmatterKey]),
-                            rawDate: parsedDate.getTime()
-                        });
+                        const val = frontmatter[frontmatterKey];
+                        if (typeof val === 'string') {
+                            points.push({
+                                x: parsedDate.toLocaleDateString(),
+                                y: parseFloat(val),
+                                rawDate: parsedDate.getTime()
+                            });
+                        }
                     }
                 }
             });
@@ -147,11 +158,15 @@ export default class HevyPlugin extends Plugin {
         if (!folder) await this.app.vault.createFolder(normalizedPath);
     }
 
-    async loadSettings() { this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()); }
+    async loadSettings() { 
+    const data = (await this.loadData()) as Partial<HevyPluginSettings> | null;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data); 
+}
+    
     async saveSettings() { await this.saveData(this.settings); }
 
     async syncWorkouts() {
-        new Notice("Fetching from Hevy...");
+        new Notice("Fetching from Hevy.");
         const data = await fetchWorkouts(this.settings.apiKey, this.settings.defaultLimit);
         if (!data?.workouts) return;
 
@@ -171,53 +186,55 @@ export default class HevyPlugin extends Plugin {
     }
 
     async generateMonthlyReview() {
-    new Notice("Archiving monthly reviews...");
-    const baseFolder = this.settings.folderPath || "HevyWorkouts";
-    const reportsFolder = `${baseFolder}/MonthlyReports`;
-    await this.ensureFolder(reportsFolder);
+        new Notice("Archiving monthly reviews...");
+        const baseFolder = this.settings.folderPath || "HevyWorkouts";
+        const reportsFolder = `${baseFolder}/MonthlyReports`;
+        await this.ensureFolder(reportsFolder);
 
-    const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(baseFolder) && !f.path.includes("MonthlyReports"));
-    const months: Record<string, TFile[]> = {};
+        const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(baseFolder) && !f.path.includes("MonthlyReports"));
+        const months: Record<string, TFile[]> = {};
 
-    files.forEach(file => {
-        const match = file.basename.match(/^\d{4}-\d{2}/);
-        if (match) {
-            if (!months[match[0]]) months[match[0]] = [];
-            months[match[0]].push(file);
-        }
-    });
+        files.forEach(file => {
+            const match = file.basename.match(/^\d{4}-\d{2}/);
+            if (match) {
+                if (!months[match[0]]) months[match[0]] = [];
+                months[match[0]].push(file);
+            }
+        });
 
-    for (const [month, workoutFiles] of Object.entries(months)) {
-        const path = normalizePath(`${reportsFolder}/${month}.md`);
-        const prs: Record<string, number> = {};
+        for (const [month, workoutFiles] of Object.entries(months)) {
+            const path = normalizePath(`${reportsFolder}/${month}.md`);
+            const prs: Record<string, number> = {};
 
-        workoutFiles.forEach(file => {
-            const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-            if (!fm) return;
-            Object.keys(fm).forEach(key => {
-                if (key.startsWith("1rm-")) {
-                    const val = parseFloat(fm[key]);
-                    const name = key.replace("1rm-", "").replace(/-/g, " ");
-                    if (!prs[name] || val > prs[name]) prs[name] = val;
-                }
+            workoutFiles.forEach(file => {
+                const fm = this.app.metadataCache.getFileCache(file)?.frontmatter as WorkoutFrontmatter | undefined;
+                if (!fm) return;
+                Object.keys(fm).forEach(key => {
+                    if (key.startsWith("1rm-")) {
+                        const val = fm[key];
+                        if (typeof val === 'string') {
+                            const numVal = parseFloat(val);
+                            const name = key.replace("1rm-", "").replace(/-/g, " ");
+                            if (!prs[name] || numVal > prs[name]) prs[name] = numVal;
+                        }
+                    }
+                });
             });
-        });
 
-        let content = `# Fitness Review: ${month}\n\n## 🏆 Personal records this month\n| Exercise | Peak 1RM (${this.settings.weightUnit}) |\n| --- | --- |\n`;
-        Object.entries(prs).sort().forEach(([name, val]) => {
-            content += `| **${name.toUpperCase()}** | ${val.toFixed(1)} |\n`;
-        });
-        content += `\n## 📅 Sessions\n${workoutFiles.map(f => `- [[${f.basename}]]`).join('\n')}`;
+            let content = `# Fitness Review: ${month}\n\n## 🏆 Personal records this month\n| Exercise | Peak 1RM (${this.settings.weightUnit}) |\n| --- | --- |\n`;
+            Object.entries(prs).sort().forEach(([name, val]) => {
+                content += `| **${name.toUpperCase()}** | ${val.toFixed(1)} |\n`;
+            });
+            content += `\n## 📅 Sessions\n${workoutFiles.map(f => `- [[${f.basename}]]`).join('\n')}`;
 
-        const existing = this.app.vault.getAbstractFileByPath(path);
-        if (existing instanceof TFile) {
-            // Updated to use trashFile for safety
-            await this.app.fileManager.trashFile(existing);
+            const existing = this.app.vault.getAbstractFileByPath(path);
+            if (existing instanceof TFile) {
+                await this.app.fileManager.trashFile(existing);
+            }
+            await this.app.vault.create(path, content);
         }
-        await this.app.vault.create(path, content);
+        new Notice("Monthly reports archived."); // Fixed casing
     }
-    new Notice("Monthly reports archived.");
-}
 
     async generateWeeklyReport() {
         const baseFolder = normalizePath(this.settings.folderPath || "HevyWorkouts");
@@ -267,7 +284,7 @@ export default class HevyPlugin extends Plugin {
         new Notice("Weekly reports updated.");
     }
 
-    async promptForExerciseStats() {
+    promptForExerciseStats() {
         const baseFolder = normalizePath(this.settings.folderPath || "HevyWorkouts");
         const folder = this.app.vault.getAbstractFileByPath(baseFolder);
         if (!(folder instanceof TFolder)) return;
@@ -277,7 +294,8 @@ export default class HevyPlugin extends Plugin {
 
         for (const file of files) {
             const cache = this.app.metadataCache.getFileCache(file);
-            const fileExercises = cache?.frontmatter?.exercises;
+            const fm = cache?.frontmatter as WorkoutFrontmatter | undefined;
+            const fileExercises = fm?.exercises;
             if (Array.isArray(fileExercises)) {
                 fileExercises.forEach((ex: string) => exerciseSet.add(ex));
             }
@@ -326,10 +344,10 @@ export default class HevyPlugin extends Plugin {
         const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
 
         if (existingFile instanceof TFile) {
-            await this.app.fileManager.processFrontMatter(existingFile, (fm) => {
-                fm["hevy_id"] = d.id;
-                fm["date"] = d.start_time;
-                fm["exercises"] = exerciseList;
+            await this.app.fileManager.processFrontMatter(existingFile, (fm: WorkoutFrontmatter) => {
+                fm.hevy_id = d.id;
+                fm.date = d.start_time;
+                fm.exercises = exerciseList;
                 for (const [key, value] of Object.entries(rmData)) {
                     fm[key] = value;
                 }
