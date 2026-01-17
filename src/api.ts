@@ -1,3 +1,5 @@
+import { requestUrl } from 'obsidian';
+
 export interface HevySet {
     weight_kg: number | null;
     reps: number | null;
@@ -19,18 +21,36 @@ export interface HevyWorkout {
     exercises: HevyExercise[];
 }
 
-export async function fetchWorkouts(apiKey: string, limit: number) {
-    const response = await fetch(`https://api.hevyapp.com/v1/workouts?page=1&pageSize=${limit}`, {
-        method: 'GET',
-        headers: { 'api-key': apiKey, 'Content-Type': 'application/json' }
-    });
-    return response.ok ? await response.json() : null;
+export interface HevyWorkoutsResponse {
+    workouts: HevyWorkout[];
+    page: number;
+    page_count: number;
+}
+
+export async function fetchWorkouts(apiKey: string, limit: number): Promise<HevyWorkoutsResponse | null> {
+    try {
+        const response = await requestUrl({
+            url: `https://api.hevyapp.com/v1/workouts?page=1&pageSize=${limit}`,
+            method: 'GET',
+            headers: { 'api-key': apiKey, 'Content-Type': 'application/json' }
+        });
+        return response.status === 200 ? response.json : null;
+    } catch (error) {
+        console.error("Hevy Sync: Error fetching workouts", error);
+        return null;
+    }
 }
 
 export async function fetchWorkoutDetails(apiKey: string, workoutId: string): Promise<HevyWorkout | null> {
-    const response = await fetch(`https://api.hevyapp.com/v1/workouts/${workoutId}`, {
-        method: 'GET',
-        headers: { 'api-key': apiKey, 'Content-Type': 'application/json' }
-    });
-    return response.ok ? await response.json() : null;
+    try {
+        const response = await requestUrl({
+            url: `https://api.hevyapp.com/v1/workouts/${workoutId}`,
+            method: 'GET',
+            headers: { 'api-key': apiKey, 'Content-Type': 'application/json' }
+        });
+        return response.status === 200 ? response.json : null;
+    } catch (error) {
+        console.error("Hevy Sync: Error fetching workout details", error);
+        return null;
+    }
 }

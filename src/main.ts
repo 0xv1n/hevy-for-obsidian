@@ -1,6 +1,6 @@
 import { Plugin, TFile, TFolder, normalizePath, Notice } from 'obsidian';
 import { HevySettingTab, DEFAULT_SETTINGS, HevyPluginSettings } from './settings';
-import { fetchWorkouts, fetchWorkoutDetails } from './api';
+import { fetchWorkouts, fetchWorkoutDetails, HevyWorkout } from './api';
 import { formatWeight, sanitizeFileName, convertWeight, calculate1RM, getWeekNumber } from './utils';
 import { ExerciseSuggestModal } from './modals';
 import { Chart, registerables } from 'chart.js';
@@ -14,46 +14,47 @@ export default class HevyPlugin extends Plugin {
         await this.loadSettings();
         this.addSettingTab(new HevySettingTab(this.app, this));
 
+        // Use short IDs (Obsidian prefixes them automatically) and sentence case names
         this.addCommand({
-            id: 'sync-hevy-workouts',
-            name: 'Sync Workouts',
+            id: 'sync-workouts',
+            name: 'Sync workouts',
             callback: async () => { await this.syncWorkouts(); }
         });
 
         this.addCommand({
             id: 'generate-weekly-report',
-            name: 'Generate Weekly Reports',
+            name: 'Generate weekly reports',
             callback: async () => { await this.generateWeeklyReport(); }
         });
 
         this.addCommand({
             id: 'generate-exercise-stats',
-            name: 'Generate Exercise Stats Page',
+            name: 'Generate exercise stats page',
             callback: async () => { await this.promptForExerciseStats(); }
         });
 
         this.addCommand({
             id: 'generate-monthly-review',
-            name: 'Generate Monthly Fitness Review',
+            name: 'Generate monthly fitness review',
             callback: async () => { await this.generateMonthlyReview(); }
         });
 
         this.registerMarkdownCodeBlockProcessor("hevy-table", async (source, el) => {
             const data = await fetchWorkouts(this.settings.apiKey, this.settings.defaultLimit);
             if (!data?.workouts) {
-                el.createEl("p", { text: "No workout data found. Check API Key." });
+                el.createEl("p", { text: "No workout data found. Check API key." });
                 return;
             }
 
             const table = el.createEl("table");
             const tbody = table.createEl("tbody");
-            data.workouts.forEach((w: any) => {
+            data.workouts.forEach((w: HevyWorkout) => {
                 const row = tbody.createEl("tr");
                 const nameCell = row.createEl("td");
                 const link = nameCell.createEl("a", { text: w.title, cls: "hevy-link" });
                 link.addEventListener("click", (e) => {
                     e.preventDefault();
-                    this.createWorkoutNote(w.id);
+                    void this.createWorkoutNote(w.id);
                 });
                 row.createEl("td", { text: new Date(w.start_time).toLocaleDateString() });
             });
@@ -62,11 +63,9 @@ export default class HevyPlugin extends Plugin {
         this.registerMarkdownCodeBlockProcessor("hevy-chart", async (source, el) => {
             const lines = source.split("\n");
             let exerciseName = "";
-            let metric = "weight";
 
             lines.forEach(line => {
                 if (line.includes("exercise:")) exerciseName = line.split(":")[1].trim();
-                if (line.includes("metric:")) metric = line.split(":")[1].trim();
             });
 
             if (!exerciseName) {
@@ -172,54 +171,55 @@ export default class HevyPlugin extends Plugin {
     }
 
     async generateMonthlyReview() {
-        new Notice("Archiving Monthly Reviews...");
-        const baseFolder = this.settings.folderPath || "HevyWorkouts";
-        const reportsFolder = `${baseFolder}/MonthlyReports`;
-        await this.ensureFolder(reportsFolder);
+    new Notice("Archiving monthly reviews...");
+    const baseFolder = this.settings.folderPath || "HevyWorkouts";
+    const reportsFolder = `${baseFolder}/MonthlyReports`;
+    await this.ensureFolder(reportsFolder);
 
-        const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(baseFolder) && !f.path.includes("MonthlyReports"));
-        const months: Record<string, TFile[]> = {};
+    const files = this.app.vault.getMarkdownFiles().filter(f => f.path.startsWith(baseFolder) && !f.path.includes("MonthlyReports"));
+    const months: Record<string, TFile[]> = {};
 
-        // Group by month YYYY-MM
-        files.forEach(file => {
-            const match = file.basename.match(/^\d{4}-\d{2}/);
-            if (match) {
-                if (!months[match[0]]) months[match[0]] = [];
-                months[match[0]].push(file);
-            }
+    files.forEach(file => {
+        const match = file.basename.match(/^\d{4}-\d{2}/);
+        if (match) {
+            if (!months[match[0]]) months[match[0]] = [];
+            months[match[0]].push(file);
+        }
+    });
+
+    for (const [month, workoutFiles] of Object.entries(months)) {
+        const path = normalizePath(`${reportsFolder}/${month}.md`);
+        const prs: Record<string, number> = {};
+
+        workoutFiles.forEach(file => {
+            const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+            if (!fm) return;
+            Object.keys(fm).forEach(key => {
+                if (key.startsWith("1rm-")) {
+                    const val = parseFloat(fm[key]);
+                    const name = key.replace("1rm-", "").replace(/-/g, " ");
+                    if (!prs[name] || val > prs[name]) prs[name] = val;
+                }
+            });
         });
 
-        for (const [month, workoutFiles] of Object.entries(months)) {
-            const path = normalizePath(`${reportsFolder}/${month}.md`);
-            const prs: Record<string, number> = {};
+        let content = `# Fitness Review: ${month}\n\n## 🏆 Personal records this month\n| Exercise | Peak 1RM (${this.settings.weightUnit}) |\n| --- | --- |\n`;
+        Object.entries(prs).sort().forEach(([name, val]) => {
+            content += `| **${name.toUpperCase()}** | ${val.toFixed(1)} |\n`;
+        });
+        content += `\n## 📅 Sessions\n${workoutFiles.map(f => `- [[${f.basename}]]`).join('\n')}`;
 
-            workoutFiles.forEach(file => {
-                const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-                if (!fm) return;
-                Object.keys(fm).forEach(key => {
-                    if (key.startsWith("1rm-")) {
-                        const val = parseFloat(fm[key]);
-                        const name = key.replace("1rm-", "").replace(/-/g, " ");
-                        if (!prs[name] || val > prs[name]) prs[name] = val;
-                    }
-                });
-            });
-
-            let content = `# Fitness Review: ${month}\n\n## 🏆 Personal Records this Month\n| Exercise | Peak 1RM (${this.settings.weightUnit}) |\n| --- | --- |\n`;
-            Object.entries(prs).sort().forEach(([name, val]) => {
-                content += `| **${name.toUpperCase()}** | ${val.toFixed(1)} |\n`;
-            });
-            content += `\n## 📅 Sessions\n${workoutFiles.map(f => `- [[${f.basename}]]`).join('\n')}`;
-
-            const existing = this.app.vault.getAbstractFileByPath(path);
-            if (existing) await this.app.vault.delete(existing);
-            await this.app.vault.create(path, content);
+        const existing = this.app.vault.getAbstractFileByPath(path);
+        if (existing instanceof TFile) {
+            // Updated to use trashFile for safety
+            await this.app.fileManager.trashFile(existing);
         }
-        new Notice("Monthly Reports archived.");
+        await this.app.vault.create(path, content);
     }
+    new Notice("Monthly reports archived.");
+}
 
     async generateWeeklyReport() {
-        new Notice("Scanning workouts for weekly reports...");
         const baseFolder = normalizePath(this.settings.folderPath || "HevyWorkouts");
         const folder = this.app.vault.getAbstractFileByPath(baseFolder);
 
@@ -273,18 +273,18 @@ export default class HevyPlugin extends Plugin {
         if (!(folder instanceof TFolder)) return;
 
         const exerciseSet = new Set<string>();
-        const files = folder.children.filter(f => f instanceof TFile && f.extension === 'md') as TFile[];
+        const files = folder.children.filter((f): f is TFile => f instanceof TFile && f.extension === 'md');
 
         for (const file of files) {
             const cache = this.app.metadataCache.getFileCache(file);
             const fileExercises = cache?.frontmatter?.exercises;
             if (Array.isArray(fileExercises)) {
-                fileExercises.forEach(ex => exerciseSet.add(ex));
+                fileExercises.forEach((ex: string) => exerciseSet.add(ex));
             }
         }
 
         new ExerciseSuggestModal(this.app, Array.from(exerciseSet).sort(), (selected) => {
-            this.generateExerciseStatPage(selected);
+            void this.generateExerciseStatPage(selected);
         }).open();
     }
 
@@ -292,17 +292,18 @@ export default class HevyPlugin extends Plugin {
         const statsFolder = normalizePath(`${this.settings.folderPath}/ExerciseStats`);
         await this.ensureFolder(statsFolder);
         const fileName = `${statsFolder}/${sanitizeFileName(exerciseName)}.md`;
-        const content = `# Stats: ${exerciseName}\n\n## 1RM Trend\n\`\`\`hevy-chart\nexercise: ${exerciseName}\n\`\`\``;
+        const content = `# Stats: ${exerciseName}\n\n## 1RM trend\n\`\`\`hevy-chart\nexercise: ${exerciseName}\n\`\`\``;
 
-        if (!this.app.vault.getAbstractFileByPath(fileName)) {
-            const file = await this.app.vault.create(fileName, content);
-            await this.app.workspace.getLeaf(true).openFile(file as TFile);
+        const abstractFile = this.app.vault.getAbstractFileByPath(fileName);
+        if (abstractFile instanceof TFile) {
+            await this.app.workspace.getLeaf(true).openFile(abstractFile);
         } else {
-            await this.app.workspace.getLeaf(true).openFile(this.app.vault.getAbstractFileByPath(fileName) as TFile);
+            const file = await this.app.vault.create(fileName, content);
+            await this.app.workspace.getLeaf(true).openFile(file);
         }
     }
 
-    async createWorkoutNote(workoutId: string, open: boolean = true) {
+    async createWorkoutNote(workoutId: string, open = true) {
         const d = await fetchWorkoutDetails(this.settings.apiKey, workoutId);
         if (!d) return;
 
@@ -317,7 +318,7 @@ export default class HevyPlugin extends Plugin {
         const rmData: Record<string, string> = {};
         d.exercises.forEach(ex => {
             const valid = ex.sets.filter(s => s.weight_kg !== null && s.reps !== null);
-            const best1RM = valid.length > 0 ? Math.max(...valid.map(s => calculate1RM(s.weight_kg, s.reps))) : 0;
+            const best1RM = valid.length > 0 ? Math.max(...valid.map(s => calculate1RM(s.weight_kg ?? 0, s.reps ?? 0))) : 0;
             const key = `1rm-${sanitizeFileName(ex.title).toLowerCase().replace(/\s+/g, '-')}`;
             rmData[key] = convertWeight(best1RM, this.settings.weightUnit).toFixed(1);
         });
@@ -342,7 +343,7 @@ export default class HevyPlugin extends Plugin {
             d.exercises.forEach(ex => {
                 content += `## ${ex.title}\n`;
                 ex.sets.forEach((s, i) => {
-                    content += `- Set ${i + 1}: **${formatWeight(s.weight_kg, this.settings.weightUnit)}** x ${s.reps}\n`;
+                    content += `- Set ${i + 1}: **${formatWeight(s.weight_kg ?? 0, this.settings.weightUnit)}** x ${s.reps}\n`;
                 });
                 content += `\n`;
             });

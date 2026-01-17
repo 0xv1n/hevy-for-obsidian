@@ -1,4 +1,4 @@
-import { SuggestModal, TFile, App } from 'obsidian';
+import { SuggestModal, App } from 'obsidian';
 
 export class ExerciseSuggestModal extends SuggestModal<string> {
     exercises: string[];
