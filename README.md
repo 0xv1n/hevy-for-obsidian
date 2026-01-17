@@ -1,6 +1,6 @@
 # 🏋️‍♂️ Hevy for Obsidian
 
-Connect your Hevy workout data directly to your Obsidian second brain. This plugin transforms raw workout logs into actionable insights, automated monthly reports, and dynamic strength dashboards.
+Connect your Hevy workout data directly to your Obsidian second brain. This plugin transforms raw workout logs into actionable insights, automated monthly reports, and dynamic strength dashboards. Usage of the plugin requires an API key for Hevy, which is currently only available to Pro subscribers. 
 
 ## ✨ Key Features
 
@@ -17,8 +17,8 @@ Connect your Hevy workout data directly to your Obsidian second brain. This plug
 
 ## 🚀 Getting Started
 1. **Installation**
-    - If building: `npm run build`, then copy hevy to your Obsidian plugins folder.
-    - If ***not*** building: copy hevy to your Obsidian plugins folder. *(the repo will always have the most current build in releases, but I urge you to build it yourself!)*
+    - If building manually: `npm run build`, then copy hevy to your Obsidian plugins folder.
+    - If ***not*** building: install via Community Plugins browser ([Hevy](https://obsidian.md/plugins?id=hevy)).
     - Enable the plugin in Settings > Community Plugins.
 
 2. **Configuration**
