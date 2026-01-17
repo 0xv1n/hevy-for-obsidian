@@ -32,7 +32,7 @@ __export(main_exports, {
   default: () => HevyPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/settings.ts
 var import_obsidian = require("obsidian");
@@ -50,16 +50,16 @@ var HevySettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Hevy for Obsidian Settings" });
-    new import_obsidian.Setting(containerEl).setName("Hevy API Key").addText((t) => t.setValue(this.plugin.settings.apiKey).onChange(async (v) => {
+    new import_obsidian.Setting(containerEl).setName("Hevy for Obsidian settings").setHeading();
+    new import_obsidian.Setting(containerEl).setName("Hevy API key").setDesc("Enter your personal API key from Hevy").addText((t) => t.setValue(this.plugin.settings.apiKey).onChange(async (v) => {
       this.plugin.settings.apiKey = v;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian.Setting(containerEl).setName("Weight Unit").addDropdown((d) => d.addOption("kg", "kg").addOption("lbs", "lbs").setValue(this.plugin.settings.weightUnit).onChange(async (v) => {
+    new import_obsidian.Setting(containerEl).setName("Weight unit").addDropdown((d) => d.addOption("kg", "kg").addOption("lbs", "lbs").setValue(this.plugin.settings.weightUnit).onChange(async (v) => {
       this.plugin.settings.weightUnit = v;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian.Setting(containerEl).setName("Export Folder").addText((t) => t.setValue(this.plugin.settings.folderPath).onChange(async (v) => {
+    new import_obsidian.Setting(containerEl).setName("Export folder").addText((t) => t.setValue(this.plugin.settings.folderPath).onChange(async (v) => {
       this.plugin.settings.folderPath = v;
       await this.plugin.saveSettings();
     }));
@@ -67,19 +67,32 @@ var HevySettingTab = class extends import_obsidian.PluginSettingTab {
 };
 
 // src/api.ts
+var import_obsidian2 = require("obsidian");
 async function fetchWorkouts(apiKey, limit) {
-  const response = await fetch(`https://api.hevyapp.com/v1/workouts?page=1&pageSize=${limit}`, {
-    method: "GET",
-    headers: { "api-key": apiKey, "Content-Type": "application/json" }
-  });
-  return response.ok ? await response.json() : null;
+  try {
+    const response = await (0, import_obsidian2.requestUrl)({
+      url: `https://api.hevyapp.com/v1/workouts?page=1&pageSize=${limit}`,
+      method: "GET",
+      headers: { "api-key": apiKey, "Content-Type": "application/json" }
+    });
+    return response.status === 200 ? response.json : null;
+  } catch (error) {
+    console.error("Hevy Sync: Error fetching workouts", error);
+    return null;
+  }
 }
 async function fetchWorkoutDetails(apiKey, workoutId) {
-  const response = await fetch(`https://api.hevyapp.com/v1/workouts/${workoutId}`, {
-    method: "GET",
-    headers: { "api-key": apiKey, "Content-Type": "application/json" }
-  });
-  return response.ok ? await response.json() : null;
+  try {
+    const response = await (0, import_obsidian2.requestUrl)({
+      url: `https://api.hevyapp.com/v1/workouts/${workoutId}`,
+      method: "GET",
+      headers: { "api-key": apiKey, "Content-Type": "application/json" }
+    });
+    return response.status === 200 ? response.json : null;
+  } catch (error) {
+    console.error("Hevy Sync: Error fetching workout details", error);
+    return null;
+  }
 }
 
 // src/utils.ts
@@ -110,8 +123,8 @@ function getWeekNumber(date) {
 }
 
 // src/modals.ts
-var import_obsidian2 = require("obsidian");
-var ExerciseSuggestModal = class extends import_obsidian2.SuggestModal {
+var import_obsidian3 = require("obsidian");
+var ExerciseSuggestModal = class extends import_obsidian3.SuggestModal {
   constructor(app, exercises, onChoose) {
     super(app);
     this.exercises = exercises;
@@ -14601,34 +14614,34 @@ var registerables = [
 
 // src/main.ts
 Chart.register(...registerables);
-var HevyPlugin = class extends import_obsidian3.Plugin {
+var HevyPlugin = class extends import_obsidian4.Plugin {
   async onload() {
     await this.loadSettings();
     this.addSettingTab(new HevySettingTab(this.app, this));
     this.addCommand({
-      id: "sync-hevy-workouts",
-      name: "Sync Workouts",
+      id: "sync-workouts",
+      name: "Sync workouts",
       callback: async () => {
         await this.syncWorkouts();
       }
     });
     this.addCommand({
       id: "generate-weekly-report",
-      name: "Generate Weekly Reports",
+      name: "Generate weekly reports",
       callback: async () => {
         await this.generateWeeklyReport();
       }
     });
     this.addCommand({
       id: "generate-exercise-stats",
-      name: "Generate Exercise Stats Page",
+      name: "Generate exercise stats page",
       callback: async () => {
         await this.promptForExerciseStats();
       }
     });
     this.addCommand({
       id: "generate-monthly-review",
-      name: "Generate Monthly Fitness Review",
+      name: "Generate monthly fitness review",
       callback: async () => {
         await this.generateMonthlyReview();
       }
@@ -14636,7 +14649,7 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
     this.registerMarkdownCodeBlockProcessor("hevy-table", async (source, el) => {
       const data = await fetchWorkouts(this.settings.apiKey, this.settings.defaultLimit);
       if (!(data == null ? void 0 : data.workouts)) {
-        el.createEl("p", { text: "No workout data found. Check API Key." });
+        el.createEl("p", { text: "No workout data found. Check API key." });
         return;
       }
       const table = el.createEl("table");
@@ -14647,7 +14660,7 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
         const link = nameCell.createEl("a", { text: w.title, cls: "hevy-link" });
         link.addEventListener("click", (e) => {
           e.preventDefault();
-          this.createWorkoutNote(w.id);
+          void this.createWorkoutNote(w.id);
         });
         row.createEl("td", { text: new Date(w.start_time).toLocaleDateString() });
       });
@@ -14655,12 +14668,9 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
     this.registerMarkdownCodeBlockProcessor("hevy-chart", async (source, el) => {
       const lines = source.split("\n");
       let exerciseName = "";
-      let metric = "weight";
       lines.forEach((line) => {
         if (line.includes("exercise:"))
           exerciseName = line.split(":")[1].trim();
-        if (line.includes("metric:"))
-          metric = line.split(":")[1].trim();
       });
       if (!exerciseName) {
         el.createEl("p", { text: "Error: No exercise name specified." });
@@ -14726,7 +14736,7 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
     });
   }
   async ensureFolder(path) {
-    const normalizedPath = (0, import_obsidian3.normalizePath)(path);
+    const normalizedPath = (0, import_obsidian4.normalizePath)(path);
     const folder = this.app.vault.getAbstractFileByPath(normalizedPath);
     if (!folder)
       await this.app.vault.createFolder(normalizedPath);
@@ -14738,7 +14748,7 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
     await this.saveData(this.settings);
   }
   async syncWorkouts() {
-    new import_obsidian3.Notice("Fetching from Hevy...");
+    new import_obsidian4.Notice("Fetching from Hevy...");
     const data = await fetchWorkouts(this.settings.apiKey, this.settings.defaultLimit);
     if (!(data == null ? void 0 : data.workouts))
       return;
@@ -14747,15 +14757,15 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
     for (const w of data.workouts) {
       const dateStr = new Date(w.start_time).toISOString().split("T")[0];
       const fileName = `${dateStr} - ${sanitizeFileName(w.title)}.md`;
-      const fullPath = (0, import_obsidian3.normalizePath)(`${baseFolder}/${fileName}`);
+      const fullPath = (0, import_obsidian4.normalizePath)(`${baseFolder}/${fileName}`);
       if (!this.app.vault.getAbstractFileByPath(fullPath)) {
         await this.createWorkoutNote(w.id, false);
       }
     }
-    new import_obsidian3.Notice("Sync complete.");
+    new import_obsidian4.Notice("Sync complete.");
   }
   async generateMonthlyReview() {
-    new import_obsidian3.Notice("Archiving Monthly Reviews...");
+    new import_obsidian4.Notice("Archiving monthly reviews...");
     const baseFolder = this.settings.folderPath || "HevyWorkouts";
     const reportsFolder = `${baseFolder}/MonthlyReports`;
     await this.ensureFolder(reportsFolder);
@@ -14770,7 +14780,7 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
       }
     });
     for (const [month, workoutFiles] of Object.entries(months)) {
-      const path = (0, import_obsidian3.normalizePath)(`${reportsFolder}/${month}.md`);
+      const path = (0, import_obsidian4.normalizePath)(`${reportsFolder}/${month}.md`);
       const prs = {};
       workoutFiles.forEach((file) => {
         var _a;
@@ -14788,7 +14798,7 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
       });
       let content = `# Fitness Review: ${month}
 
-## \u{1F3C6} Personal Records this Month
+## \u{1F3C6} Personal records this month
 | Exercise | Peak 1RM (${this.settings.weightUnit}) |
 | --- | --- |
 `;
@@ -14800,21 +14810,21 @@ var HevyPlugin = class extends import_obsidian3.Plugin {
 ## \u{1F4C5} Sessions
 ${workoutFiles.map((f) => `- [[${f.basename}]]`).join("\n")}`;
       const existing = this.app.vault.getAbstractFileByPath(path);
-      if (existing)
-        await this.app.vault.delete(existing);
+      if (existing instanceof import_obsidian4.TFile) {
+        await this.app.fileManager.trashFile(existing);
+      }
       await this.app.vault.create(path, content);
     }
-    new import_obsidian3.Notice("Monthly Reports archived.");
+    new import_obsidian4.Notice("Monthly reports archived.");
   }
   async generateWeeklyReport() {
-    new import_obsidian3.Notice("Scanning workouts for weekly reports...");
-    const baseFolder = (0, import_obsidian3.normalizePath)(this.settings.folderPath || "HevyWorkouts");
+    const baseFolder = (0, import_obsidian4.normalizePath)(this.settings.folderPath || "HevyWorkouts");
     const folder = this.app.vault.getAbstractFileByPath(baseFolder);
-    if (!(folder instanceof import_obsidian3.TFolder))
+    if (!(folder instanceof import_obsidian4.TFolder))
       return;
     const workoutsByWeek = {};
     for (const file of folder.children) {
-      if (file instanceof import_obsidian3.TFile && file.extension === "md") {
+      if (file instanceof import_obsidian4.TFile && file.extension === "md") {
         const dateMatch = file.name.match(/^\d{4}-\d{2}-\d{2}/);
         if (dateMatch) {
           const weekStr = getWeekNumber(new Date(dateMatch[0]));
@@ -14827,7 +14837,7 @@ ${workoutFiles.map((f) => `- [[${f.basename}]]`).join("\n")}`;
     const reportFolder = `${baseFolder}/WeeklyReports`;
     await this.ensureFolder(reportFolder);
     for (const [week, files] of Object.entries(workoutsByWeek)) {
-      const reportPath = (0, import_obsidian3.normalizePath)(`${reportFolder}/Report-${week}.md`);
+      const reportPath = (0, import_obsidian4.normalizePath)(`${reportFolder}/Report-${week}.md`);
       if (this.app.vault.getAbstractFileByPath(reportPath))
         continue;
       let weeklyVolume = 0;
@@ -14854,16 +14864,16 @@ ${workoutFiles.map((f) => `- [[${f.basename}]]`).join("\n")}`;
 ${files.map((f) => `- [[${f.basename}]]`).join("\n")}`;
       await this.app.vault.create(reportPath, reportContent);
     }
-    new import_obsidian3.Notice("Weekly reports updated.");
+    new import_obsidian4.Notice("Weekly reports updated.");
   }
   async promptForExerciseStats() {
     var _a;
-    const baseFolder = (0, import_obsidian3.normalizePath)(this.settings.folderPath || "HevyWorkouts");
+    const baseFolder = (0, import_obsidian4.normalizePath)(this.settings.folderPath || "HevyWorkouts");
     const folder = this.app.vault.getAbstractFileByPath(baseFolder);
-    if (!(folder instanceof import_obsidian3.TFolder))
+    if (!(folder instanceof import_obsidian4.TFolder))
       return;
     const exerciseSet = /* @__PURE__ */ new Set();
-    const files = folder.children.filter((f) => f instanceof import_obsidian3.TFile && f.extension === "md");
+    const files = folder.children.filter((f) => f instanceof import_obsidian4.TFile && f.extension === "md");
     for (const file of files) {
       const cache = this.app.metadataCache.getFileCache(file);
       const fileExercises = (_a = cache == null ? void 0 : cache.frontmatter) == null ? void 0 : _a.exercises;
@@ -14872,24 +14882,25 @@ ${files.map((f) => `- [[${f.basename}]]`).join("\n")}`;
       }
     }
     new ExerciseSuggestModal(this.app, Array.from(exerciseSet).sort(), (selected) => {
-      this.generateExerciseStatPage(selected);
+      void this.generateExerciseStatPage(selected);
     }).open();
   }
   async generateExerciseStatPage(exerciseName) {
-    const statsFolder = (0, import_obsidian3.normalizePath)(`${this.settings.folderPath}/ExerciseStats`);
+    const statsFolder = (0, import_obsidian4.normalizePath)(`${this.settings.folderPath}/ExerciseStats`);
     await this.ensureFolder(statsFolder);
     const fileName = `${statsFolder}/${sanitizeFileName(exerciseName)}.md`;
     const content = `# Stats: ${exerciseName}
 
-## 1RM Trend
+## 1RM trend
 \`\`\`hevy-chart
 exercise: ${exerciseName}
 \`\`\``;
-    if (!this.app.vault.getAbstractFileByPath(fileName)) {
+    const abstractFile = this.app.vault.getAbstractFileByPath(fileName);
+    if (abstractFile instanceof import_obsidian4.TFile) {
+      await this.app.workspace.getLeaf(true).openFile(abstractFile);
+    } else {
       const file = await this.app.vault.create(fileName, content);
       await this.app.workspace.getLeaf(true).openFile(file);
-    } else {
-      await this.app.workspace.getLeaf(true).openFile(this.app.vault.getAbstractFileByPath(fileName));
     }
   }
   async createWorkoutNote(workoutId, open = true) {
@@ -14900,17 +14911,20 @@ exercise: ${exerciseName}
     await this.ensureFolder(baseFolder);
     const dateStr = new Date(d.start_time).toISOString().split("T")[0];
     const fileName = `${dateStr} - ${sanitizeFileName(d.title)}.md`;
-    const fullPath = (0, import_obsidian3.normalizePath)(`${baseFolder}/${fileName}`);
+    const fullPath = (0, import_obsidian4.normalizePath)(`${baseFolder}/${fileName}`);
     const exerciseList = d.exercises.map((e) => e.title);
     const rmData = {};
     d.exercises.forEach((ex) => {
       const valid = ex.sets.filter((s) => s.weight_kg !== null && s.reps !== null);
-      const best1RM = valid.length > 0 ? Math.max(...valid.map((s) => calculate1RM(s.weight_kg, s.reps))) : 0;
+      const best1RM = valid.length > 0 ? Math.max(...valid.map((s) => {
+        var _a, _b;
+        return calculate1RM((_a = s.weight_kg) != null ? _a : 0, (_b = s.reps) != null ? _b : 0);
+      })) : 0;
       const key = `1rm-${sanitizeFileName(ex.title).toLowerCase().replace(/\s+/g, "-")}`;
       rmData[key] = convertWeight(best1RM, this.settings.weightUnit).toFixed(1);
     });
     const existingFile = this.app.vault.getAbstractFileByPath(fullPath);
-    if (existingFile instanceof import_obsidian3.TFile) {
+    if (existingFile instanceof import_obsidian4.TFile) {
       await this.app.fileManager.processFrontMatter(existingFile, (fm) => {
         fm["hevy_id"] = d.id;
         fm["date"] = d.start_time;
@@ -14940,7 +14954,8 @@ exercises: ${JSON.stringify(exerciseList)}
         content += `## ${ex.title}
 `;
         ex.sets.forEach((s, i) => {
-          content += `- Set ${i + 1}: **${formatWeight(s.weight_kg, this.settings.weightUnit)}** x ${s.reps}
+          var _a;
+          content += `- Set ${i + 1}: **${formatWeight((_a = s.weight_kg) != null ? _a : 0, this.settings.weightUnit)}** x ${s.reps}
 `;
         });
         content += `
