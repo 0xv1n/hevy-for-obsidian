@@ -12,7 +12,7 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
-const dir = "build/hevy-for-obsidian";
+const dir = "build/hevy";
 
 const copyRequiredFiles = () => {
     try {

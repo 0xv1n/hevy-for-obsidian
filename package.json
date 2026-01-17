@@ -1,7 +1,7 @@
 {
-  "name": "hevy-for-obsidian",
+  "name": "hevy",
   "version": "1.0.0",
-  "description": "Integrate Hevy workouts into Obsidian",
+  "description": "Integrate Hevy workouts into your vault.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
